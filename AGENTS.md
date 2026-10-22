@@ -8,3 +8,4 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+- Demo banking rules (limits, rates, password/transfer checks) live in src/lib/bank.ts with tests in src/test/bank.test.ts; data is browser-only by user choice.
