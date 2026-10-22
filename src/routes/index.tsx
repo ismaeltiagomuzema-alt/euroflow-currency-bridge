@@ -398,10 +398,10 @@ function SendScreen({ user, go, update, log }: { user: User; go: Go; update: Upd
     <form onSubmit={next} className="space-y-4">
       <Back onClick={() => go("home")} />
       <Title sub={`Disponível: ${eur(user.balance)}`}>Enviar dinheiro</Title>
-      <Field label="Destinatário (nome ou IBAN)" maxLength={60} value={to} onChange={(e) => setTo(e.target.value)} />
+      <Field label="Destinatário (nome e IBAN)" maxLength={60} value={to} onChange={(e) => setTo(e.target.value)} />
       <label className="block space-y-1.5"><span className="text-sm font-medium text-muted-foreground">País de destino</span>
         <select value={country} onChange={(e) => setCountry(e.target.value)} className="h-12 w-full rounded-xl border border-input bg-card px-4">
-          {Object.keys(COUNTRIES).map((c) => <option key={c}>{c} — {COUNTRIES[c]}</option>).map((o, i) => ({ ...o, props: { ...o.props, value: Object.keys(COUNTRIES)[i] } }))}
+          {Object.keys(COUNTRIES).map((c) => <option key={c} value={c}>{`${c} — ${COUNTRIES[c]}`}</option>)}
         </select></label>
       <Field label={`Valor a receber (${cur})`} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
       {amt > 0 && cur !== "EUR" && <Msg kind="info">1 {cur} = {eur(RATES[cur])} · taxa {FEE * 100}% · será debitado {eur(n)}</Msg>}
