@@ -139,6 +139,8 @@ type LogFn = (u: User, a: string, d?: string) => User;
 /* ---------- public ---------- */
 function Landing({ go }: { go: Go }) {
   const feats = [
+    { i: ArrowLeftRight, t: "Câmbio em 8 moedas", d: "EUR, GBP, CHF, USD, PLN, SEK, NOK e DKK com comissão de 0,5%." },
+    { i: Send, t: "Envios para toda a Europa", d: "Transfere para 14 países na moeda local de quem recebe." },
     { i: Lock, t: "PIN em cada envio", d: "Nenhuma transferência sai sem confirmação." },
     { i: Shield, t: "Limites inteligentes", d: `Até ${eur(LIMITS.perTransfer)} por envio e ${eur(LIMITS.perDay)} por dia.` },
     { i: History, t: "Registo de atividade", d: "Cada operação fica registada com data e hora." },
@@ -149,8 +151,8 @@ function Landing({ go }: { go: Go }) {
         <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground">TB</span>Triple Bank
       </div>
       <div className="mt-12">
-        <h1 className="font-display text-4xl font-semibold leading-tight">O teu dinheiro,<br /><span className="text-primary">mais simples.</span></h1>
-        <p className="mt-4 text-muted-foreground">Uma plataforma digital moderna para gerir a tua experiência financeira.</p>
+        <h1 className="font-display text-4xl font-semibold leading-tight">O teu dinheiro,<br /><span className="text-primary">sem fronteiras.</span></h1>
+        <p className="mt-4 text-muted-foreground">Troca moedas e envia dinheiro para qualquer parte da Europa, de forma simples e segura.</p>
       </div>
       <div className="mt-8 rounded-3xl bg-card-gradient p-6 text-primary-foreground shadow-soft">
         <div className="flex justify-between text-sm opacity-80"><span>Saldo disponível</span><DemoBadge /></div>
