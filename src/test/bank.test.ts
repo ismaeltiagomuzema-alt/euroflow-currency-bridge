@@ -17,3 +17,9 @@ describe("rules", () => {
     expect(checkTransfer(u({ txs }), 400)).toBeNull();
   });
 });
+
+import { convert } from "@/lib/bank";
+describe("exchange", () => {
+  it("converts 100 GBP to EUR with 0.5% fee", () => expect(convert(100, "GBP", "EUR")).toBe(116.42));
+  it("same currency has no fee", () => expect(convert(50, "EUR", "EUR")).toBe(50));
+});

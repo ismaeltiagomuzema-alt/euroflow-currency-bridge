@@ -53,3 +53,19 @@ export function checkTransfer(u: User, amount: number): string | null {
 
 export const eur = (n: number) =>
   new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(n);
+
+// Demo exchange rates: value of 1 unit in EUR.
+export const RATES: Record<string, number> = { EUR: 1, USD: 0.92, GBP: 1.17, CHF: 1.05, PLN: 0.23, SEK: 0.088, NOK: 0.086, DKK: 0.134 };
+export const CURRENCIES = Object.keys(RATES);
+export const FEE = 0.005; // 0.5% exchange fee
+export const COUNTRIES: Record<string, string> = {
+  "Portugal": "EUR", "Espanha": "EUR", "França": "EUR", "Alemanha": "EUR", "Itália": "EUR",
+  "Países Baixos": "EUR", "Bélgica": "EUR", "Irlanda": "EUR", "Reino Unido": "GBP",
+  "Suíça": "CHF", "Polónia": "PLN", "Suécia": "SEK", "Noruega": "NOK", "Dinamarca": "DKK",
+};
+export function convert(amount: number, from: string, to: string, withFee = true) {
+  const v = (amount * RATES[from]) / RATES[to];
+  return Math.round(v * (withFee && from !== to ? 1 - FEE : 1) * 100) / 100;
+}
+export const money = (n: number, cur: string) =>
+  new Intl.NumberFormat("pt-PT", { style: "currency", currency: cur }).format(n);
