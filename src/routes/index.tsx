@@ -2,10 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowDownLeft, ArrowUpRight, CreditCard, Eye, EyeOff, History, Home, Lock, LogOut,
-  Plus, Send, Shield, ShieldCheck, User as UserIcon, ChevronLeft, AlertTriangle,
+  Plus, Send, ArrowLeftRight, Shield, ShieldCheck, User as UserIcon, ChevronLeft, AlertTriangle,
 } from "lucide-react";
 import {
-  IDLE_MS, LIMITS, LOGIN, checkPassword, checkTransfer, eur, hash, load, save, sentToday,
+  IDLE_MS, LIMITS, RATES, CURRENCIES, COUNTRIES, FEE, convert, money, LOGIN, checkPassword, checkTransfer, eur, hash, load, save, sentToday,
   type User,
 } from "@/lib/bank";
 
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
   component: App,
 });
 
-type Screen = "landing" | "login" | "signup" | "home" | "send" | "add" | "card" | "moves" | "profile" | "security" | "pin";
+type Screen = "landing" | "login" | "signup" | "home" | "send" | "add" | "card" | "moves" | "profile" | "security" | "pin" | "fx";
 
 const uid = () => crypto.randomUUID();
 const fmtDate = (t: number) =>
@@ -86,6 +86,7 @@ function App() {
     send: <SendScreen user={user} go={go} update={update} log={log} />,
     add: <AddScreen user={user} go={go} update={update} log={log} />,
     card: <CardScreen user={user} />,
+    fx: <FxScreen user={user} go={go} update={update} log={log} />,
     moves: <MovesScreen user={user} />,
     profile: <ProfileScreen user={user} go={go} logout={logout} />,
     security: <SecurityScreen user={user} go={go} />,
@@ -280,8 +281,9 @@ function HomeScreen({ user, go }: { user: User; go: Go }) {
     { i: Plus, l: "Adicionar", s: "add" as Screen },
     { i: Send, l: "Enviar", s: "send" as Screen },
     { i: CreditCard, l: "Cartão", s: "card" as Screen },
-    { i: History, l: "Movimentos", s: "moves" as Screen },
+    { i: ArrowLeftRight, l: "Câmbio", s: "fx" as Screen },
   ];
+  const wallets = Object.entries(user.wallets ?? {}).filter(([, v]) => v > 0);
   const used = sentToday(user);
   return (
     <div className="space-y-6">
@@ -304,6 +306,11 @@ function HomeScreen({ user, go }: { user: User; go: Go }) {
           </button>
         ))}
       </div>
+      {wallets.length > 0 && (
+        <section><h2 className="mb-3 font-display font-semibold">Outras moedas</h2>
+          <div className="flex gap-3 overflow-x-auto">{wallets.map(([c, v]) => (
+            <div key={c} className="min-w-28 rounded-2xl bg-card p-4 shadow-soft"><p className="text-xs font-bold text-muted-foreground">{c}</p><p className="font-display font-semibold">{money(v, c)}</p></div>))}</div>
+        </section>)}
       <section>
         <div className="mb-3 flex justify-between"><h2 className="font-display font-semibold">Movimentos recentes</h2><button onClick={() => go("moves")} className="text-sm font-medium text-primary">Ver todos</button></div>
         <TxList user={user} limit={4} />
@@ -332,12 +339,16 @@ function TxList({ user, limit }: { user: User; limit?: number }) {
 
 function SendScreen({ user, go, update, log }: { user: User; go: Go; update: Upd; log: LogFn }) {
   const [to, setTo] = useState(""); const [amount, setAmount] = useState("");
+  const [country, setCountry] = useState("Portugal"); const cur = COUNTRIES[country];
   const [step, setStep] = useState<"form" | "pin" | "done">("form");
   const [pin, setPin] = useState(""); const [err, setErr] = useState<string | null>(null);
   const [pinTries, setPinTries] = useState(0);
   const opKey = useRef<string | null>(null); // idempotency key per operation
   const done = useRef(new Set<string>());
-  const n = parseFloat(amount.replace(",", "."));
+  const amt = parseFloat(amount.replace(",", "."));
+  // EUR debited from the account (includes exchange fee when currency differs)
+  const n = amt > 0 ? Math.round(amt * RATES[cur] * (cur === "EUR" ? 1 : 1 + FEE) * 100) / 100 : NaN;
+  const dest = `${to.trim()} (${country})`;
 
   const next = (ev: React.FormEvent) => {
     ev.preventDefault(); setErr(null);
@@ -358,8 +369,8 @@ function SendScreen({ user, go, update, log }: { user: User; go: Go; update: Upd
       return setErr(`PIN incorreto. ${3 - t} tentativas restantes.`);
     }
     update(user.email, (u) => {
-      let x: User = { ...u, balance: u.balance - n, txs: [{ id: key, type: "out", amount: n, label: `Para ${to.trim()}`, at: Date.now() }, ...u.txs] };
-      x = log(x, "Transferência enviada", `${eur(n)} para ${to.trim()}`);
+      let x: User = { ...u, balance: u.balance - n, txs: [{ id: key, type: "out", amount: n, label: `Para ${dest} · ${money(amt, cur)}`, at: Date.now() }, ...u.txs] };
+      x = log(x, "Transferência enviada", `${money(amt, cur)} (${eur(n)}) para ${dest}`);
       if (n >= LIMITS.unusual) x = log(x, "⚠ Alerta", `Valor elevado: ${eur(n)}`);
       return x;
     });
@@ -369,7 +380,7 @@ function SendScreen({ user, go, update, log }: { user: User; go: Go; update: Upd
   if (step === "done") return (
     <div className="space-y-6 pt-10 text-center">
       <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-success/10 text-success"><ShieldCheck className="h-8 w-8" /></span>
-      <Title sub={`Para ${to}`}>{eur(n)} enviados</Title>
+      <Title sub={`Para ${dest} · debitado ${eur(n)}`}>{money(amt, cur)} enviados</Title>
       {n >= LIMITS.unusual && <Msg kind="info">Enviámos um alerta de segurança por se tratar de um valor elevado.</Msg>}
       <Btn onClick={() => go("home")}>Voltar ao início</Btn>
     </div>
@@ -377,7 +388,7 @@ function SendScreen({ user, go, update, log }: { user: User; go: Go; update: Upd
   if (step === "pin") return (
     <form onSubmit={confirm} className="space-y-5">
       <Back onClick={() => { setStep("form"); setPin(""); }} />
-      <Title sub={`Enviar ${eur(n)} para ${to}`}>Confirma com o PIN</Title>
+      <Title sub={`Enviar ${money(amt, cur)} para ${dest} · debitado ${eur(n)}`}>Confirma com o PIN</Title>
       <PinInput value={pin} onChange={setPin} />
       {err && <Msg>{err}</Msg>}
       <Btn disabled={pin.length < 4}>Confirmar envio</Btn>
@@ -388,7 +399,12 @@ function SendScreen({ user, go, update, log }: { user: User; go: Go; update: Upd
       <Back onClick={() => go("home")} />
       <Title sub={`Disponível: ${eur(user.balance)}`}>Enviar dinheiro</Title>
       <Field label="Destinatário (nome ou IBAN)" maxLength={60} value={to} onChange={(e) => setTo(e.target.value)} />
-      <Field label="Valor (€)" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <label className="block space-y-1.5"><span className="text-sm font-medium text-muted-foreground">País de destino</span>
+        <select value={country} onChange={(e) => setCountry(e.target.value)} className="h-12 w-full rounded-xl border border-input bg-card px-4">
+          {Object.keys(COUNTRIES).map((c) => <option key={c}>{c} — {COUNTRIES[c]}</option>).map((o, i) => ({ ...o, props: { ...o.props, value: Object.keys(COUNTRIES)[i] } }))}
+        </select></label>
+      <Field label={`Valor a receber (${cur})`} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      {amt > 0 && cur !== "EUR" && <Msg kind="info">1 {cur} = {eur(RATES[cur])} · taxa {FEE * 100}% · será debitado {eur(n)}</Msg>}
       <p className="text-xs text-muted-foreground">Limites: {eur(LIMITS.perTransfer)} por envio · {eur(LIMITS.perDay)} por dia · usado hoje {eur(sentToday(user))}</p>
       {err && <Msg>{err}</Msg>}
       <Btn>Continuar</Btn>
@@ -491,5 +507,50 @@ function TabBar({ screen, go }: { screen: Screen; go: Go }) {
         ))}
       </ul>
     </nav>
+  );
+}
+
+function FxScreen({ user, go, update, log }: { user: User; go: Go; update: Upd; log: LogFn }) {
+  const [from, setFrom] = useState("EUR"); const [to, setTo] = useState("GBP");
+  const [amount, setAmount] = useState(""); const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+  const bal = (c: string) => (c === "EUR" ? user.balance : user.wallets?.[c] ?? 0);
+  const n = parseFloat(amount.replace(",", "."));
+  const out = n > 0 ? convert(n, from, to) : 0;
+  const submit = (ev: React.FormEvent) => {
+    ev.preventDefault(); setErr(null); setOk(null);
+    if (from === to) return setErr("Escolhe moedas diferentes.");
+    if (!(n > 0)) return setErr("Valor inválido.");
+    if (n > bal(from)) return setErr("Saldo insuficiente nessa moeda.");
+    update(user.email, (u) => {
+      const w = { ...(u.wallets ?? {}) }; let b = u.balance;
+      if (from === "EUR") b -= n; else w[from] = Math.round(((w[from] ?? 0) - n) * 100) / 100;
+      if (to === "EUR") b += out; else w[to] = Math.round(((w[to] ?? 0) + out) * 100) / 100;
+      return log({ ...u, balance: Math.round(b * 100) / 100, wallets: w }, "Câmbio", `${money(n, from)} → ${money(out, to)}`);
+    });
+    setOk(`Trocaste ${money(n, from)} por ${money(out, to)}.`); setAmount("");
+  };
+  const Sel = ({ v, set }: { v: string; set: (c: string) => void }) => (
+    <select value={v} onChange={(e) => set(e.target.value)} className="h-12 rounded-xl border border-input bg-card px-3 font-semibold">
+      {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+    </select>);
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <Back onClick={() => go("home")} />
+      <Title sub="Taxas de demonstração · comissão de 0,5%">Câmbio</Title>
+      <div className="rounded-2xl bg-card p-4 shadow-soft">
+        <p className="text-xs text-muted-foreground">Tens {money(bal(from), from)}</p>
+        <div className="mt-2 flex gap-2"><Sel v={from} set={setFrom} />
+          <input inputMode="decimal" placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12 min-w-0 flex-1 rounded-xl border border-input bg-background px-4 text-right font-display text-lg outline-none focus:ring-2 focus:ring-ring" /></div>
+      </div>
+      <button type="button" aria-label="Inverter" onClick={() => { setFrom(to); setTo(from); }} className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-accent text-accent-foreground"><ArrowLeftRight className="h-4 w-4 rotate-90" /></button>
+      <div className="rounded-2xl bg-card p-4 shadow-soft">
+        <p className="text-xs text-muted-foreground">Recebes</p>
+        <div className="mt-2 flex items-center gap-2"><Sel v={to} set={setTo} /><p className="flex-1 text-right font-display text-lg font-semibold">{money(out, to)}</p></div>
+      </div>
+      <p className="text-center text-xs text-muted-foreground">1 {from} = {convert(1, from, to, false).toFixed(4)} {to}</p>
+      {err && <Msg>{err}</Msg>}{ok && <Msg kind="ok">{ok}</Msg>}
+      <Btn>Trocar</Btn>
+    </form>
   );
 }

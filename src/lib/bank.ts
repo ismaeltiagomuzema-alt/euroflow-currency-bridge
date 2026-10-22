@@ -28,7 +28,7 @@ export type Tx = { id: string; type: "in" | "out"; amount: number; label: string
 export type Log = { at: number; action: string; detail: string };
 export type User = {
   name: string; email: string; salt: string; pwHash: string; pinHash?: string;
-  balance: number; txs: Tx[]; logs: Log[]; attempts: number; lockedUntil: number;
+  balance: number; wallets?: Record<string, number>; txs: Tx[]; logs: Log[]; attempts: number; lockedUntil: number;
 };
 
 const KEY = "tb_users_v2";
