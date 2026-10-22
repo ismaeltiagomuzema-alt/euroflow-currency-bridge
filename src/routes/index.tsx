@@ -40,7 +40,7 @@ function App() {
 
   const update = (e: string, fn: (u: User) => User) => {
     setUsers((prev) => {
-      const next = { ...prev, [e]: fn(prev[e]) };
+      const next = { ...prev, [e]: fn(prev[e] as User) };
       save(next);
       return next;
     });
@@ -339,7 +339,7 @@ function TxList({ user, limit }: { user: User; limit?: number }) {
 
 function SendScreen({ user, go, update, log }: { user: User; go: Go; update: Upd; log: LogFn }) {
   const [to, setTo] = useState(""); const [amount, setAmount] = useState("");
-  const [country, setCountry] = useState("Portugal"); const cur = COUNTRIES[country];
+  const [country, setCountry] = useState("Portugal"); const cur = COUNTRIES[country] ?? "EUR";
   const [step, setStep] = useState<"form" | "pin" | "done">("form");
   const [pin, setPin] = useState(""); const [err, setErr] = useState<string | null>(null);
   const [pinTries, setPinTries] = useState(0);
@@ -347,7 +347,7 @@ function SendScreen({ user, go, update, log }: { user: User; go: Go; update: Upd
   const done = useRef(new Set<string>());
   const amt = parseFloat(amount.replace(",", "."));
   // EUR debited from the account (includes exchange fee when currency differs)
-  const n = amt > 0 ? Math.round(amt * RATES[cur] * (cur === "EUR" ? 1 : 1 + FEE) * 100) / 100 : NaN;
+  const n = amt > 0 ? Math.round(amt * (RATES[cur] ?? 1) * (cur === "EUR" ? 1 : 1 + FEE) * 100) / 100 : NaN;
   const dest = `${to.trim()} (${country})`;
 
   const next = (ev: React.FormEvent) => {
@@ -404,7 +404,7 @@ function SendScreen({ user, go, update, log }: { user: User; go: Go; update: Upd
           {Object.keys(COUNTRIES).map((c) => <option key={c} value={c}>{`${c} — ${COUNTRIES[c]}`}</option>)}
         </select></label>
       <Field label={`Valor a receber (${cur})`} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-      {amt > 0 && cur !== "EUR" && <Msg kind="info">1 {cur} = {eur(RATES[cur])} · taxa {FEE * 100}% · será debitado {eur(n)}</Msg>}
+      {amt > 0 && cur !== "EUR" && <Msg kind="info">1 {cur} = {eur((RATES[cur] ?? 1))} · taxa {FEE * 100}% · será debitado {eur(n)}</Msg>}
       <p className="text-xs text-muted-foreground">Limites: {eur(LIMITS.perTransfer)} por envio · {eur(LIMITS.perDay)} por dia · usado hoje {eur(sentToday(user))}</p>
       {err && <Msg>{err}</Msg>}
       <Btn>Continuar</Btn>

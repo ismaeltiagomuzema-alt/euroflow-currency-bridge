@@ -64,7 +64,7 @@ export const COUNTRIES: Record<string, string> = {
   "Suíça": "CHF", "Polónia": "PLN", "Suécia": "SEK", "Noruega": "NOK", "Dinamarca": "DKK",
 };
 export function convert(amount: number, from: string, to: string, withFee = true) {
-  const v = (amount * RATES[from]) / RATES[to];
+  const v = (amount * (RATES[from] ?? 1)) / (RATES[to] ?? 1);
   return Math.round(v * (withFee && from !== to ? 1 - FEE : 1) * 100) / 100;
 }
 export const money = (n: number, cur: string) =>
