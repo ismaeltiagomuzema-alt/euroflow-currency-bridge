@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { checkPassword, checkTransfer, type User } from "@/lib/bank";
 
 const u = (over: Partial<User> = {}): User => ({
-  name: "A", email: "a@a.pt", salt: "s", pwHash: "h", balance: 5000, txs: [], logs: [],
-  attempts: 0, lockedUntil: 0, ...over,
+  id: "1", name: "A", email: "a@a.pt", balance: 5000, txs: [], logs: [],
+  hasPin: true, mfa: false, ...over,
 });
 
 describe("rules", () => {
