@@ -1,4 +1,4 @@
-// Demo-only banking logic. Everything is stored in this browser (localStorage).
+// Banking rules shared by the app UI and the server functions.
 export const LIMITS = { perTransfer: 1000, perDay: 3000, unusual: 500 };
 export const LOGIN = { maxAttempts: 5, lockMs: 5 * 60 * 1000 };
 export const IDLE_MS = 5 * 60 * 1000;
@@ -17,25 +17,13 @@ export function checkPassword(pw: string): string | null {
   return null;
 }
 
-export async function hash(text: string, salt: string) {
-  const data = new TextEncoder().encode(salt + ":" + text);
-  let buf = await crypto.subtle.digest("SHA-256", data);
-  for (let i = 0; i < 999; i++) buf = await crypto.subtle.digest("SHA-256", buf);
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-export type Tx = { id: string; type: "in" | "out"; amount: number; label: string; at: number };
-export type Log = { at: number; action: string; detail: string };
+export type Tx = { id: string; type: "in" | "out" | "fx"; amount: number; label: string; at: number };
+export type Log = { at: number; action: string; detail: string; ip?: string | null };
+// Account view built from server data (Lovable Cloud).
 export type User = {
-  name: string; email: string; salt: string; pwHash: string; pinHash?: string;
-  balance: number; wallets?: Record<string, number>; txs: Tx[]; logs: Log[]; attempts: number; lockedUntil: number;
+  id: string; name: string; email: string; balance: number; wallets?: Record<string, number>;
+  txs: Tx[]; logs: Log[]; hasPin: boolean; mfa: boolean;
 };
-
-const KEY = "tb_users_v2";
-export const load = (): Record<string, User> => {
-  try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return {}; }
-};
-export const save = (u: Record<string, User>) => localStorage.setItem(KEY, JSON.stringify(u));
 
 export function sentToday(u: User, now = Date.now()) {
   const d = new Date(now).toDateString();
