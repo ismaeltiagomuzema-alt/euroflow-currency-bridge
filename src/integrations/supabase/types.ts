@@ -14,13 +14,157 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          detail: string
+          id: number
+          ip: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          detail?: string
+          id?: never
+          ip?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          detail?: string
+          id?: never
+          ip?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          pin_attempts: number
+          pin_hash: string | null
+          pin_locked_until: string | null
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          name?: string
+          pin_attempts?: number
+          pin_hash?: string | null
+          pin_locked_until?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          pin_attempts?: number
+          pin_hash?: string | null
+          pin_locked_until?: string | null
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount_eur: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          label: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount_eur: number
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          label: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount_eur?: number
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          label?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallets: {
+        Row: {
+          balance: number
+          currency: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          currency: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          currency?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      tb_deposit: {
+        Args: { p_amount: number; p_ip: string; p_key: string; p_user: string }
+        Returns: undefined
+      }
+      tb_exchange: {
+        Args: {
+          p_amount: number
+          p_eur: number
+          p_from: string
+          p_ip: string
+          p_key: string
+          p_out: number
+          p_to: string
+          p_user: string
+        }
+        Returns: undefined
+      }
+      tb_log: {
+        Args: {
+          p_action: string
+          p_detail: string
+          p_ip: string
+          p_user: string
+        }
+        Returns: undefined
+      }
+      tb_set_pin: {
+        Args: { p_ip: string; p_pin: string; p_user: string }
+        Returns: undefined
+      }
+      tb_transfer: {
+        Args: {
+          p_eur: number
+          p_ip: string
+          p_key: string
+          p_label: string
+          p_per_day: number
+          p_per_tx: number
+          p_pin: string
+          p_unusual: number
+          p_user: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
