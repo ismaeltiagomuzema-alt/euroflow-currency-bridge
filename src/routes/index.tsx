@@ -45,7 +45,7 @@ async function fetchUser(): Promise<User | null> {
   ]);
   const wallets: Record<string, number> = {};
   for (const r of w.data ?? []) wallets[r.currency] = Number(r.balance);
-  const balance = wallets.EUR ?? 0; delete wallets.EUR;
+  const balance = wallets["EUR"] ?? 0; delete wallets["EUR"];
   return {
     id: au.id, email: au.email ?? "", name: p.data?.name || (au.email ?? "").split("@")[0] || "Cliente",
     hasPin: !!p.data?.pin_hash, balance, wallets,
