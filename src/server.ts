@@ -44,18 +44,36 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+// Security headers on every response. Framing is limited to this site and the Lovable editor preview.
+function withSecurityHeaders(response: Response): Response {
+  const r = new Response(response.body, response);
+  const h = r.headers;
+  h.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+  h.set("X-Content-Type-Options", "nosniff");
+  h.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  h.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  h.set("Content-Security-Policy",
+    "frame-ancestors 'self' https://lovable.dev https://*.lovable.dev https://*.lovable.app; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests");
+  return r;
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const url = new URL(request.url);
+    if (url.protocol === "http:" && !["localhost", "127.0.0.1"].includes(url.hostname)) {
+      url.protocol = "https:";
+      return Response.redirect(url.toString(), 301);
+    }
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return withSecurityHeaders(await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
+      return withSecurityHeaders(new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      }));
     }
   },
 };
