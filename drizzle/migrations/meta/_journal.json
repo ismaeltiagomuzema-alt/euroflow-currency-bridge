@@ -15,6 +15,13 @@
       "when": 1792715426418,
       "tag": "0001_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793027182218,
+      "tag": "0002_currencies_withdrawals_support",
+      "breakpoints": true
     }
   ]
 }

@@ -41,6 +41,48 @@ export type Database = {
         }
         Relationships: []
       }
+      exchanges: {
+        Row: {
+          amount_from: number
+          amount_to: number
+          created_at: string
+          fee: number
+          from_cur: string
+          id: string
+          idempotency_key: string
+          rate: number
+          status: string
+          to_cur: string
+          user_id: string
+        }
+        Insert: {
+          amount_from: number
+          amount_to: number
+          created_at?: string
+          fee?: number
+          from_cur: string
+          id?: string
+          idempotency_key: string
+          rate: number
+          status?: string
+          to_cur: string
+          user_id: string
+        }
+        Update: {
+          amount_from?: number
+          amount_to?: number
+          created_at?: string
+          fee?: number
+          from_cur?: string
+          id?: string
+          idempotency_key?: string
+          rate?: number
+          status?: string
+          to_cur?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -65,6 +107,60 @@ export type Database = {
           pin_attempts?: number
           pin_hash?: string | null
           pin_locked_until?: string | null
+        }
+        Relationships: []
+      }
+      security_prefs: {
+        Row: {
+          login_alerts: boolean
+          tx_alerts: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          login_alerts?: boolean
+          tx_alerts?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          login_alerts?: boolean
+          tx_alerts?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          id: string
+          reference: string
+          status: string
+          subject: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          id?: string
+          reference?: string
+          status?: string
+          subject: string
+          user_id?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          reference?: string
+          status?: string
+          subject?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -116,6 +212,54 @@ export type Database = {
         }
         Relationships: []
       }
+      withdrawals: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          fee: number
+          holder: string
+          iban_masked: string
+          id: string
+          idempotency_key: string
+          method: string
+          net: number
+          reference: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          fee?: number
+          holder: string
+          iban_masked: string
+          id?: string
+          idempotency_key: string
+          method: string
+          net: number
+          reference?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          fee?: number
+          holder?: string
+          iban_masked?: string
+          id?: string
+          idempotency_key?: string
+          method?: string
+          net?: number
+          reference?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -138,6 +282,21 @@ export type Database = {
         }
         Returns: undefined
       }
+      tb_fx: {
+        Args: {
+          p_amount: number
+          p_eur: number
+          p_fee: number
+          p_from: string
+          p_ip: string
+          p_key: string
+          p_out: number
+          p_rate: number
+          p_to: string
+          p_user: string
+        }
+        Returns: undefined
+      }
       tb_log: {
         Args: {
           p_action: string
@@ -146,6 +305,16 @@ export type Database = {
           p_user: string
         }
         Returns: undefined
+      }
+      tb_sessions: {
+        Args: { p_user: string }
+        Returns: {
+          created_at: string
+          id: string
+          ip: string
+          updated_at: string
+          user_agent: string
+        }[]
       }
       tb_set_pin: {
         Args: { p_ip: string; p_pin: string; p_user: string }
@@ -161,6 +330,22 @@ export type Database = {
           p_per_tx: number
           p_pin: string
           p_unusual: number
+          p_user: string
+        }
+        Returns: string
+      }
+      tb_withdraw: {
+        Args: {
+          p_amount: number
+          p_cur: string
+          p_eur: number
+          p_fee: number
+          p_holder: string
+          p_iban_masked: string
+          p_ip: string
+          p_key: string
+          p_method: string
+          p_pin: string
           p_user: string
         }
         Returns: string
