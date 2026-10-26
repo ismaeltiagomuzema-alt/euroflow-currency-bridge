@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { LIMITS, RATES, FEE, convert } from "@/lib/bank";
+import { LIMITS, RATES, FEE, convert, quote, validIban, maskIban, withdrawFee, WITHDRAW_MIN } from "@/lib/bank";
 
 const ip = () =>
   getRequestHeader("cf-connecting-ip") ?? getRequestHeader("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
@@ -50,10 +50,11 @@ export const exchange = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await requireAal(context);
-    const out = convert(data.amount, data.from, data.to);
+    const q = quote(data.amount, data.from, data.to);
+    const out = q.out;
     const eurValue = convert(data.amount, data.from, "EUR", false);
-    const { error } = await (await admin()).rpc("tb_exchange", {
-      p_user: context.userId, p_from: data.from, p_to: data.to, p_amount: data.amount, p_out: out, p_eur: eurValue, p_key: data.key, p_ip: ip() as string,
+    const { error } = await (await admin()).rpc("tb_fx", {
+      p_user: context.userId, p_from: data.from, p_to: data.to, p_amount: data.amount, p_out: out, p_rate: q.rate, p_fee: q.fee, p_eur: eurValue, p_key: data.key, p_ip: ip() as string,
     });
     if (error) throw new Error(error.message.includes("Saldo") ? error.message : "Operação inválida.");
     return { out };
@@ -92,11 +93,48 @@ export const transfer = createServerFn({ method: "POST" })
 
 export const logEvent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { action: "login" | "logout" | "idle" | "mfa_on" | "mfa_off" }) => d)
+  .inputValidator((d: { action: "login" | "logout" | "idle" | "mfa_on" | "mfa_off" | "pw_change" | "sessions_out" | "prefs" }) => d)
   .handler(async ({ data, context }) => {
-    const labels = { login: "Início de sessão", logout: "Fim de sessão", idle: "Sessão expirada", mfa_on: "2FA ativada", mfa_off: "2FA desativada" };
+    const labels = { login: "Início de sessão", logout: "Fim de sessão", idle: "Sessão expirada", mfa_on: "2FA ativada", mfa_off: "2FA desativada", pw_change: "Palavra-passe alterada", sessions_out: "Outras sessões terminadas", prefs: "Notificações de segurança alteradas" } as Record<string, string>;
     const action = labels[data.action];
     if (!action) return { ok: false };
     await (await admin()).rpc("tb_log", { p_user: context.userId, p_action: action, p_detail: "", p_ip: ip() as string });
     return { ok: true };
+  });
+
+export const withdraw = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { currency: string; amount: number; holder: string; iban: string; pin: string; key: string }) => {
+    if (!(d.currency in RATES)) throw new Error("Moeda inválida.");
+    const amount = Math.round(Number(d.amount) * 100) / 100;
+    if (!(amount >= WITHDRAW_MIN)) throw new Error(`Montante mínimo: ${WITHDRAW_MIN}.`);
+    const holder = String(d.holder).trim().slice(0, 80);
+    if (holder.length < 3) throw new Error("Indica o titular da conta.");
+    if (!validIban(String(d.iban))) throw new Error("IBAN inválido.");
+    return { currency: d.currency, amount, holder, iban: String(d.iban), pin: String(d.pin).slice(0, 6), key: key(d.key) };
+  })
+  .handler(async ({ data, context }) => {
+    await requireAal(context);
+    const fee = withdrawFee(data.amount, data.currency);
+    const eurAmt = convert(data.amount, data.currency, "EUR", false);
+    const { data: r, error } = await (await admin()).rpc("tb_withdraw", {
+      p_user: context.userId, p_pin: data.pin, p_cur: data.currency, p_amount: data.amount, p_fee: fee, p_eur: eurAmt,
+      p_method: "Transferência bancária (IBAN)", p_holder: data.holder, p_iban_masked: maskIban(data.iban), p_key: data.key, p_ip: ip() as string,
+    });
+    if (error) throw new Error("Não foi possível registar o pedido.");
+    if (r === "ok" || r === "duplicate") return { ok: true };
+    return { ok: false, error: MSG[r as string] ?? "Erro." };
+  });
+
+export const listSessions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await (await admin()).rpc("tb_sessions", { p_user: context.userId });
+    if (error) return { sessions: [], current: null, error: "Sessões indisponíveis." };
+    const current = (context.claims as any)?.session_id ?? null;
+    return {
+      current,
+      sessions: (data ?? []).map((s: any) => ({ id: s.id as string, createdAt: s.created_at as string, lastAt: (s.updated_at ?? null) as string | null, userAgent: (s.user_agent ?? "") as string, ip: (s.ip ?? null) as string | null })),
+      error: null as string | null,
+    };
   });
