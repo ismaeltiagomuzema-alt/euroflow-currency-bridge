@@ -138,3 +138,34 @@ export const listSessions = createServerFn({ method: "POST" })
       error: null as string | null,
     };
   });
+
+export const changePassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { current: string; next: string }) => ({ current: String(d.current).slice(0, 200), next: String(d.next).slice(0, 200) }))
+  .handler(async ({ data, context }) => {
+    await requireAal(context);
+    const { checkPassword } = await import("@/lib/bank");
+    const bad = checkPassword(data.next);
+    if (bad) return { ok: false, error: bad };
+    if (data.next === data.current) return { ok: false, error: "A nova palavra-passe tem de ser diferente da atual." };
+    const email = (context.claims as any)?.email as string | undefined;
+    if (!email) return { ok: false, error: "Não foi possível confirmar a conta." };
+    // Verify the current password with a throwaway client so the browser session is untouched.
+    const { createClient } = await import("@supabase/supabase-js");
+    const k = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
+    const tmp = createClient(process.env["SUPABASE_URL"]!, k, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: (input, init) => { const h = new Headers(init?.headers); if (k.startsWith("sb_") && h.get("Authorization") === `Bearer ${k}`) h.delete("Authorization"); h.set("apikey", k); return fetch(input, { ...init, headers: h }); } },
+    });
+    const { error: e1 } = await tmp.auth.signInWithPassword({ email, password: data.current });
+    const db = await admin();
+    if (e1) {
+      await db.rpc("tb_log", { p_user: context.userId, p_action: "Palavra-passe atual incorreta", p_detail: "Alteração de palavra-passe", p_ip: ip() as string });
+      return { ok: false, error: "A palavra-passe atual está incorreta." };
+    }
+    await tmp.auth.signOut({ scope: "local" }).catch(() => {});
+    const { error } = await db.auth.admin.updateUserById(context.userId, { password: data.next });
+    if (error) return { ok: false, error: "Não foi possível alterar a palavra-passe." };
+    await db.rpc("tb_log", { p_user: context.userId, p_action: "Palavra-passe alterada", p_detail: "", p_ip: ip() as string });
+    return { ok: true, error: null as string | null };
+  });
