@@ -57,3 +57,27 @@ export function convert(amount: number, from: string, to: string, withFee = true
 }
 export const money = (n: number, cur: string) =>
   new Intl.NumberFormat("pt-PT", { style: "currency", currency: cur }).format(n);
+
+// Demo exchange quote: rate without fee, fee charged in the source currency, final amount received.
+export function quote(amount: number, from: string, to: string) {
+  const rate = Math.round(((RATES[from] ?? 1) / (RATES[to] ?? 1)) * 1e6) / 1e6;
+  const fee = from === to ? 0 : Math.round(amount * FEE * 100) / 100;
+  return { rate, fee, out: convert(amount, from, to) };
+}
+
+// IBAN check (ISO 13616 mod-97).
+export function validIban(raw: string) {
+  const s = raw.replace(/\s+/g, "").toUpperCase();
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(s)) return false;
+  const r = (s.slice(4) + s.slice(0, 4)).replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55));
+  let m = 0;
+  for (const d of r) m = (m * 10 + Number(d)) % 97;
+  return m === 1;
+}
+export const maskIban = (raw: string) => {
+  const s = raw.replace(/\s+/g, "").toUpperCase();
+  return `${s.slice(0, 4)} •••• ${s.slice(-4)}`;
+};
+// Withdrawals: SEPA in EUR has no fee; other currencies pay the exchange fee.
+export const WITHDRAW_MIN = 10;
+export const withdrawFee = (amount: number, cur: string) => (cur === "EUR" ? 0 : Math.round(amount * FEE * 100) / 100);
